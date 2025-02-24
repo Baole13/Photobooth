@@ -10,8 +10,8 @@ class PhotoBooth:
         self.master.geometry("800x600")
         
         # Hình nền Giáng sinh
-        self.bg_image = Image.open("background_christmas.jpg")  # Thay đổi đường dẫn đến hình nền của bạn
-        self.bg_image = self.bg_image.resize((800, 600), Image.LANCZOS)  # ✅ Đúng
+        self.bg_image = Image.open("background_christmas.jpg")  
+        self.bg_image = self.bg_image.resize((800, 600), Image.LANCZOS)
         self.bg_photo = ImageTk.PhotoImage(self.bg_image)
         
         self.canvas = tk.Canvas(master, width=800, height=600)
@@ -27,14 +27,31 @@ class PhotoBooth:
         self.image_label = tk.Label(master)
         self.image_label.pack()
 
-    def capture_image(self):
-        # Mở camera và chụp ảnh
-        cap = cv2.VideoCapture(0)
-        ret, frame = cap.read()
+        self.video_source = 0  # Sử dụng camera mặc định
+        self.vid = cv2.VideoCapture(self.video_source)
+
+        self.update()  # Cập nhật video
+        self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def update(self):
+        ret, frame = self.vid.read()
         if ret:
+            # Chuyển đổi màu sắc từ BGR sang RGB
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Chuyển đổi sang hình ảnh PIL
+            img = Image.fromarray(frame)
+            img = img.resize((400, 300), Image.LANCZOS)
+            img_photo = ImageTk.PhotoImage(img)
+            self.image_label.config(image=img_photo)
+            self.image_label.image = img_photo
+        self.master.after(10, self.update)
+
+    def capture_image(self):
+        ret, frame = self.vid.read()
+        if ret:
+            # Lưu ảnh chụp
             cv2.imwrite("captured_image.jpg", frame)
             self.show_image("captured_image.jpg")
-        cap.release()
 
     def upload_image(self):
         file_path = filedialog.askopenfilename()
@@ -43,10 +60,14 @@ class PhotoBooth:
 
     def show_image(self, file_path):
         img = Image.open(file_path)
-        img = img.resize((400, 300), Image.LANCZOS)  # Sử dụng LANCZOS thay vì ANTIALIAS
+        img = img.resize((400, 300), Image.LANCZOS)
         img_photo = ImageTk.PhotoImage(img)
         self.image_label.config(image=img_photo)
         self.image_label.image = img_photo
+
+    def on_closing(self):
+        self.vid.release()  # Giải phóng camera
+        self.master.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()
